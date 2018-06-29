@@ -5,7 +5,6 @@
 import logging
 import functools
 
-
 import requests
 from retrying import retry
 from kombu import Connection, Queue
@@ -53,6 +52,7 @@ def request_deco(func):
     """
     调用github API的装饰器
     """
+
     @functools.wraps(func)
     def _inner(self, body, message):
         url = body
@@ -81,7 +81,7 @@ def request_deco(func):
                     message.reject()
                 else:
                     message.ack()
-                print 'url:', url, 'body: ', data
+                print('url:', url, 'body: ', data)
                 func(self, (url, data), message)
                 redis_client.sadd(REDIS_VISITED_URLS, url)
             else:
@@ -94,6 +94,7 @@ class BaseConsumer(ConsumerMixin):
     """
     消费者公共类
     """
+
     def __init__(self, broker_url, queue_name, fetch_count=10):
         """初始化消费者
 
@@ -132,6 +133,7 @@ class UserConsumer(BaseConsumer):
     """
     用户队列消费者
     """
+
     @request_deco
     def handle_url(self, body, message):
         """
@@ -171,6 +173,7 @@ class RepoConsumer(BaseConsumer):
     """
     repo队列消费者
     """
+
     @request_deco
     def handle_url(self, body, message):
         """
@@ -204,6 +207,7 @@ class FollowConsumer(BaseConsumer):
     """
     用户关系消费者
     """
+
     def __init__(self, kind, broker_url, queue_name, fetch_count=10):
         """
         kind指是following还是follower
@@ -228,7 +232,10 @@ class FollowConsumer(BaseConsumer):
         mongo_save_relation.delay({'id': user, 'list': users}, self.kind)
         map(lambda x: url_sender.send_url(x, RoutingKey.USER), urls)
 
+
 consumer_list = [UserConsumer(MESSAGE_BROKER_URI, QueueName.USER)] * USER_CONSUMER_COUNT + \
                 [RepoConsumer(MESSAGE_BROKER_URI, QueueName.REPO)] * REPO_CONSUMER_COUNT + \
-                [FollowConsumer(MongodbCollection.FOLLOWER, MESSAGE_BROKER_URI, QueueName.FOLLOWER)] * FOLLOWER_CONSUMER_COUNT + \
-                [FollowConsumer(MongodbCollection.FOLLOWING, MESSAGE_BROKER_URI, QueueName.FOLLOWING)] * FOLLOWING_CONSUMER_COUNT
+                [FollowConsumer(MongodbCollection.FOLLOWER, MESSAGE_BROKER_URI,
+                                QueueName.FOLLOWER)] * FOLLOWER_CONSUMER_COUNT + \
+                [FollowConsumer(MongodbCollection.FOLLOWING, MESSAGE_BROKER_URI,
+                                QueueName.FOLLOWING)] * FOLLOWING_CONSUMER_COUNT
